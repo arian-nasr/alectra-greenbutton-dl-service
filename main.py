@@ -1,15 +1,14 @@
-import shutil
 from dotenv import load_dotenv
 import os
 from time import sleep
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from pathlib import Path
 from greenbutton import parse
 from db_connector import insert_usage_data
 from sqlite3 import Connection
 from schemas import DatabaseRecord, DownloadParameters
 import asyncio
+from io import BytesIO
 
 
 load_dotenv()
@@ -17,7 +16,6 @@ account_name = os.getenv("ALECTRA_ACCOUNT_NAME")
 account_number = os.getenv("ALECTRA_ACCOUNT_NUMBER")
 account_phone = os.getenv("ALECTRA_ACCOUNT_PHONE")
 db_path = os.getenv("USAGE_DB_PATH", "./usage_data.db")
-xml_download_dir = os.getenv("XML_DOWNLOAD_DIR", "./downloads")
 
 def calculate_dates_for_retrieval(bill_start_date: str, bill_end_date: str) -> tuple[datetime, datetime, datetime, datetime]:
 
@@ -36,7 +34,7 @@ def calculate_dates_for_retrieval(bill_start_date: str, bill_end_date: str) -> t
 
     return utc_retrieval_start_date, utc_retrieval_end_date, utc_bill_start_date, utc_bill_end_date
 
-def process_xml_file(conn: Connection, xml_file: Path):
+def process_xml_file(conn: Connection, xml_file: BytesIO):
 
     def get_correct_meter_reading(meter_readings):
         for meterReading in meter_readings:
@@ -71,7 +69,6 @@ def get_dates_last_2_weeks() -> tuple[datetime, datetime]:
 
 if __name__ == "__main__":
     while True:
-        Path(xml_download_dir).mkdir(parents=True, exist_ok=True)
         from download_xml import download_xml_files
         from db_connector import connect_db, initialize_database
 
@@ -80,22 +77,20 @@ if __name__ == "__main__":
         download_params = DownloadParameters(
             start_date=start_date,
             end_date=end_date,
-            output_dir=Path(xml_download_dir),
             account_name=account_name,
             account_number=account_number,
             account_phone=account_phone
         )
 
-        xml_file_path = asyncio.run(download_xml_files(download_params))
+        xml_file = asyncio.run(download_xml_files(download_params))
 
 
         conn = connect_db(db_path)
         initialize_database(conn)
 
-        process_xml_file(conn, xml_file_path)
+        process_xml_file(conn, xml_file)
 
         conn.close()
 
-        shutil.rmtree(xml_download_dir)
         print(f"Processed data from {start_date} to {end_date}. Waiting for next cycle...")
         sleep(4 * 60 * 60)
