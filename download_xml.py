@@ -1,9 +1,9 @@
-from pathlib import Path
 from playwright.async_api import async_playwright
 from schemas import DownloadParameters
+from io import BytesIO
 
 
-async def download_xml_files(params: DownloadParameters) -> Path:
+async def download_xml_files(params: DownloadParameters) -> BytesIO:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
@@ -60,7 +60,12 @@ async def download_xml_files(params: DownloadParameters) -> Path:
             # Perform the action that initiates download
             await download_button.click()
         download = await download_info.value
-        download_path = params.output_dir / download.suggested_filename
-        await download.save_as(download_path)
+
+        filepath = await download.path()
+        with open(filepath, 'rb') as f:
+            xml_file = BytesIO(f.read())
+
+        await download.delete()
         await browser.close()
-        return download_path
+
+        return xml_file
