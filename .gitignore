@@ -4,3 +4,4 @@
 usage_data.db
 __pycache__/
 usage_data.db.bak
+artifacts/

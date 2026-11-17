@@ -1,0 +1,5 @@
+# Browser Use 1.x is the LLM-driven fallback engine (0.x has a different API).
+browser-use>=1.0,<2
+python-dotenv>=1.0
+pydantic>=2.7
+playwright>=1.49
